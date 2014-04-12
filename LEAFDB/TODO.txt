@@ -1,0 +1,6 @@
+﻿1. Fix 10 warnings caused buy changing required .NET Framework to 2.0 from default
+
+2. Currently, if you change a database connection setting after confirming the connection details
+   and then hit OK, it won't save - it'll use the last used connection details that worked.  This
+   is likely good, but it would be best if you could auto-disable the OK button upon ANY CHANGES
+   TO THE FIRST FOUR INPUT BOXES! (can you do this reliably?)
