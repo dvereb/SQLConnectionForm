@@ -2,7 +2,7 @@
 using System.Collections.Generic;
 using System.Text;
 
-namespace LEAFDB
+namespace dvereb.SQLConnectionForm
 {
     class MysqlHelper
     {
@@ -25,9 +25,9 @@ namespace LEAFDB
         public static string generateConnectionStringFromSavedSettings(bool includeDatabaseInConnectionString)
         {
             if (includeDatabaseInConnectionString)
-                return generateConnectionString(Properties.Settings.Default["connectionStringHostnameIP"].ToString(), Properties.Settings.Default["connectionStringUsername"].ToString(), Properties.Settings.Default["connectionStringPassword"].ToString(), Properties.Settings.Default["connectionStringDatabase"].ToString(), Convert.ToUInt16(Properties.Settings.Default["connectionStringPort"]));
+                return generateConnectionString(Properties.Settings.Default.connectionStringHostnameIP, Properties.Settings.Default.connectionStringUsername, Properties.Settings.Default.connectionStringPassword, Properties.Settings.Default.connectionStringDatabase, Properties.Settings.Default.connectionStringPort);
 
-            return generateConnectionString(Properties.Settings.Default["connectionStringHostnameIP"].ToString(), Properties.Settings.Default["connectionStringUsername"].ToString(), Properties.Settings.Default["connectionStringPassword"].ToString(), Convert.ToUInt16(Properties.Settings.Default["connectionStringPort"]));
+            return generateConnectionString(Properties.Settings.Default.connectionStringHostnameIP, Properties.Settings.Default.connectionStringUsername, Properties.Settings.Default.connectionStringPassword, Properties.Settings.Default.connectionStringPort);
         }
     }
 }
