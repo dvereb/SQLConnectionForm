@@ -12,7 +12,12 @@ namespace dvereb.SQLConnectionForm
 {
     public partial class SQLConnectionDetailsForm : Form
     {
-        public SQLConnectionDetailsForm()
+        
+        /// <summary>
+        /// Initialize form values to their saved state, if it exists. Then it queries the database automatically
+        /// </summary>
+        /// <param name="autoQueryDatabasesAvailable">Defaults to true.  If true, the form will automatically check to see which databases are available based on the saved connection string from the user's last run of the application.  It automatically selects the last used database if the connection was successfull and the database is still accessible to the user via the saved connection string.</param>
+        public SQLConnectionDetailsForm(bool autoQueryDatabasesAvailable = true)
         {
             InitializeComponent();
 
@@ -25,6 +30,7 @@ namespace dvereb.SQLConnectionForm
             this.usernameTextBox.Text = Properties.Settings.Default.connectionStringUsername;
             this.passwordTextBox.Text = Properties.Settings.Default.connectionStringPassword;
 
+            if(autoQueryDatabasesAvailable)
             {
                 string connectionString = MysqlHelper.generateConnectionStringFromSavedSettings(false);
                 if (connectionString != "")
@@ -32,6 +38,24 @@ namespace dvereb.SQLConnectionForm
             }
         }
 
+        /// <summary>
+        /// Returns a new MySqlConnection object connected to the most recently saved settings (even if it was saved in a previous run of the application).  Create one SQLConnectionDetailsForm at the beginning of your application and refer to it throughout instead of making multiple copies.
+        /// 
+        /// Run like this:
+        /// SQLConnectionDetailsForm connDetails;
+        /// using(connDetails.getMySqlConnection()) { /* code that requires SQL connection */ }
+        /// </summary>
+        /// <returns>new MySqlConnection object</returns>
+        public MySqlConnection getMySqlConnection()
+        {
+            return new MySqlConnection(MysqlHelper.generateConnectionStringFromSavedSettings(true));
+        }
+
+        /// <summary>
+        /// Save SQL connection string settings from textboxes into Application Properties.Settings.Default
+        /// </summary>
+        /// <param name="sender"></param>
+        /// <param name="e"></param>
         private void oKButton_Click(object sender, EventArgs e)
         {
             // verify no changes since db test
@@ -57,6 +81,11 @@ namespace dvereb.SQLConnectionForm
             this.Close();
         }
 
+        /// <summary>
+        /// Exits the form without saving a new connection string.  Sets DialogResult to Cancel
+        /// </summary>
+        /// <param name="sender"></param>
+        /// <param name="e"></param>
         private void cancelButton_Click(object sender, EventArgs e)
         {
             this.DialogResult = System.Windows.Forms.DialogResult.Cancel;
@@ -64,6 +93,11 @@ namespace dvereb.SQLConnectionForm
             this.Close();
         }
 
+        /// <summary>
+        /// This button tests a connection to an SQL Server based on the data filled in to the first set of input boxes (Hostname / IP, Port, Username, and Password)
+        /// </summary>
+        /// <param name="sender"></param>
+        /// <param name="e"></param>
         private void testConnectionAndPopulateButton_Click(object sender, EventArgs e)
         {
             if (hostnameIPTextBox.Text.Length > 0 && usernameTextBox.Text.Length > 0 && passwordTextBox.Text.Length > 0)
@@ -79,14 +113,16 @@ namespace dvereb.SQLConnectionForm
         /// <param name="items">ComboBox.Items to populate with database names</param>
         private void queryDatabases(string connectionString, ComboBox.ObjectCollection items)
         {
-            // TODO: Make this nicer:
+            //Disable form controls
             setInputEnabled(false);
 
             // Clear combobox no matter what:
             items.Clear();
-            setSaveEnabled(false); // only enable if successful!
 
-            // Grab new values for combo box or show error message and leave it empty:
+            // only enable if successful!  (in the loop below)
+            setSaveEnabled(false); 
+
+            // Query the server and grab new values for combo box or show error message and leave it empty:
             using(MySqlConnection conn = new MySqlConnection(connectionString))
             {
                 try
@@ -95,22 +131,27 @@ namespace dvereb.SQLConnectionForm
                     conn.Open();
                     MySqlDataReader reader;
                     reader = command.ExecuteReader();
+
+                    // for all results (databases) found:
                     while (reader.Read())
+                        // add them to the Items list passed in:
                         items.Add(reader.GetString(0));
                     reader.Close();
 
                     // enable OK button if successfully connected and have databases available:
                     setSaveEnabled(true);
 
+                    // save these successful connection details in case you edit a box BEFORE hitting save and WITHOUT re-testing the connection:
                     this.lastSuccessfulHostnameIP = hostnameIPTextBox.Text;
                     this.lastSuccessfulPort = Convert.ToUInt16(portNumericUpDown.Value);
                     this.lastSuccessfulUsername = usernameTextBox.Text;
                     this.lastSuccessfulPassword = passwordTextBox.Text;
 
+                    // if there were any databases available to this user:
                     if(items.Count > 0)
                     {
                         // Default to currently-being-used database, if available...
-                        //  If not, default to connectionStringDefaultDatabase if available:
+                        //  If not, default to connectionStringDefaultDatabase, if available:
                         bool found = false;
                         for (int c = 0; c < this.databaseComboBox.Items.Count; c++)
                         {
@@ -140,7 +181,6 @@ namespace dvereb.SQLConnectionForm
                 }
             }
             
-            // TODO: Make this nicer:
             setInputEnabled(true);
         }
 
@@ -158,12 +198,16 @@ namespace dvereb.SQLConnectionForm
             //  The only time they are enabled is NOT during the times this function is in use
         }
 
+        /// <summary>
+        /// Toggle "Enabled" property of the save button and database selection combobox.
+        /// </summary>
+        /// <param name="setTo">Pass true to enable and false to disable, defaults to true</param>
         private void setSaveEnabled(bool setTo = true)
         {
             this.saveButton.Enabled = setTo;
             this.databaseComboBox.Enabled = setTo;
         }
-
+        
         // used to verify no changes upon confirmation:
         string lastSuccessfulHostnameIP;
         UInt16 lastSuccessfulPort;
