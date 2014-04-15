@@ -124,18 +124,34 @@ namespace dvereb.SQLConnectionForm
 
             // Query the server and grab new values for combo box or show error message and leave it empty:
             using(MySqlConnection conn = new MySqlConnection(connectionString))
+            using(MySqlCommand command = new MySqlCommand("show databases;", conn))
             {
                 try
                 {
-                    MySqlCommand command = new MySqlCommand("show databases;", conn);
                     conn.Open();
+
                     MySqlDataReader reader;
                     reader = command.ExecuteReader();
 
                     // for all results (databases) found:
-                    while (reader.Read())
+                    bool found = false;
+                    for (int c = 0; reader.Read(); c++)
+                    {
                         // add them to the Items list passed in:
-                        items.Add(reader.GetString(0));
+                        string next = reader.GetString(0);
+                        items.Add(next);
+
+                        // If this is the last used database that was saved from the last application run, USE IT!
+                        //  or if it wasn't, but it is the default database name, USE IT!
+                        //  but always take last used OVER default.
+                        if (next == Properties.Settings.Default.connectionStringDatabase
+                            || (next == Properties.Settings.Default.connectionStringDefaultDatabase && !found))
+                        {
+                            // set as true so that it ignores the default database name if it shows up later in the list
+                            found = true;
+                            this.databaseComboBox.SelectedIndex = c;
+                        }
+                    }
                     reader.Close();
 
                     // enable OK button if successfully connected and have databases available:
@@ -147,30 +163,7 @@ namespace dvereb.SQLConnectionForm
                     this.lastSuccessfulUsername = usernameTextBox.Text;
                     this.lastSuccessfulPassword = passwordTextBox.Text;
 
-                    // if there were any databases available to this user:
-                    if(items.Count > 0)
-                    {
-                        // Default to currently-being-used database, if available...
-                        //  If not, default to connectionStringDefaultDatabase, if available:
-                        bool found = false;
-                        for (int c = 0; c < this.databaseComboBox.Items.Count; c++)
-                        {
-                            if (items[c].ToString() == Properties.Settings.Default.connectionStringDatabase)
-                            {
-                                this.databaseComboBox.SelectedIndex = c;
-                                found = true;
-                                break;
-                            }
-                            else if (items[c].ToString() == Properties.Settings.Default.connectionStringDefaultDatabase)
-                            {
-                                this.databaseComboBox.SelectedIndex = c;
-                                found = true;
-                                // don't break as we may find the LAST SELECTED database that was saved!
-                            }
-                        }
-                        if (!found)
-                            this.databaseComboBox.SelectedIndex = 0;
-                    }
+                    conn.Close();
                 }
                 catch (MySqlException ex) {
                     MessageBox.Show("MySQL Error Number " + ex.Number + ", " + ex.Message);
